@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="format-detection" content="telephone=no">
+    <title>Sample app for progressively enhanced web components</title>
+    <script src="/bundle.js" defer></script>
+  </head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="/">Homepage</a></li>
+      <li><a href="/secondPage">Second page</a></li>
+      <li><a href="/pageWithForm">Page with form</a></li>
+    </ul>
+  </nav>
+  <article id="page-contents">
+    {pageContent|s}
+  </article>
+  <noparse> {! the noparse tag prevents the teddy templating system from parsing any children of this block which is necessary to prevent teddy from trying to parse the template literals below !}
+    <template id="word-count">
+      <style>
+        div {
+          position: relative;
+        }
+        textarea {
+          margin-top: 35px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        span {
+          display: block;
+          position: absolute;
+          top: 0;
+          right: 0;
+          margin-top: 10px;
+          font-weight: bold;
+        }
+      </style>
+      <div>
+        <textarea rows="10" cols="50" name="${id}" id="${id}">${text}</textarea>
+        <slot name="description"></slot>
+        <span></span>
+      </div>
+    </template>
+  </noparse>
+</body>
+</html>

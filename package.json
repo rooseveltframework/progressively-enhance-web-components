@@ -1,0 +1,63 @@
+{
+  "name": "progressively-enhance-web-components",
+  "description": "🕸️ Template file preprocessor for progressively enhancing web components.",
+  "author": "Roosevelt Framework Team <rooseveltframework@gmail.com>",
+  "contributors": [
+    {
+      "name": "Contributors",
+      "url": "https://github.com/rooseveltframework/progressively-enhance-web-components/graphs/contributors"
+    }
+  ],
+  "version": "1.0.0",
+  "homepage": "https://github.com/rooseveltframework/progressively-enhance-web-components",
+  "license": "CC-BY-4.0",
+  "main": "progressively-enhance-web-components.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "js-beautify": "1.15.3",
+    "jsdom": "26.0.0"
+  },
+  "devDependencies": {
+    "c8": "10.1.3",
+    "mocha": "11.1.0",
+    "standard": "17.1.2"
+  },
+  "mocha": {
+    "timeout": "700000ms"
+  },
+  "standard": {
+    "ignore": [
+      "dist/",
+      "sampleApps/express/public"
+    ]
+  },
+  "scripts": {
+    "lint": "standard",
+    "lint-fix": "standard --fix",
+    "test": "mocha test/*.js",
+    "coverage": "c8 --reporter=text --reporter=lcov mocha test/*.js --test",
+    "express-sample": "node -e \"process.chdir('sampleApps/express'); require('./sampleApps/express/server.js')\"",
+    "sample": "npm run express-sample"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/rooseveltframework/progressively-enhance-web-components.git"
+  },
+  "keywords": [
+    "progressively enhance",
+    "progressively",
+    "enhance",
+    "progressive enhancement",
+    "progressive",
+    "enhancement",
+    "web components",
+    "web",
+    "components",
+    "custom elements",
+    "custom",
+    "elements"
+  ],
+  "funding": "https://www.paypal.com/donate/?hosted_button_id=2L2X8GRXZCGJ6"
+}
