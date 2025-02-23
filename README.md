@@ -33,7 +33,7 @@ Suppose the intended use of the `<word-count>` component looks like this:
 
 And suppose also that you have an Express application with templates loaded into `mvc/views`.
 
-So leverage this module's progressive enhancement technique, you will need to define this component using a `<template>` element in any one of your templates as follows:
+So to leverage this module's progressive enhancement technique, you will need to define this component using a `<template>` element in any one of your templates as follows:
 
 ```html
 <template id="word-count">
