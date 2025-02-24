@@ -58,7 +58,7 @@ So to leverage this module's progressive enhancement technique, you will need to
   <div>
     <textarea rows="10" cols="50" name="${id}" id="${id}">${text}</textarea>
     <slot name="description"></slot>
-    <span></span>
+    <span class="word-count"></span>
   </div>
 </template>
 ```
@@ -115,7 +115,7 @@ Will be replaced with this:
 <word-count text="Once upon a time... " id="story">
   <div>
     <textarea rows="10" cols="50" name="story" id="story">Once upon a time... </textarea>
-    <span></span>
+    <span class="word-count"></span>
   </div>
   <p slot="description">Type your story in the box above!</p>
 </word-count>
