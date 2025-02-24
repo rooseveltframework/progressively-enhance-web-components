@@ -31,7 +31,7 @@ describe('progressively-enhance-web-components tests', function () {
     assert(fileContent.includes(`<word-count text="Once upon a time... " id="story">
             <div>
               <textarea rows="10" cols="50" name="story" id="story">Once upon a time... </textarea>
-              <span></span>
+              <span class="word-count"></span>
             </div>
             <p slot="description">Type your story in the box above!</p>
           </word-count>`), 'Expected markup not found')
