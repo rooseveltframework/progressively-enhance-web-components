@@ -78,7 +78,7 @@ module.exports = (params) => {
         // replace template literals with attribute values in the <template> markup
         const container = document.createElement('div')
         container.appendChild(template)
-        for (const attrib of element.attributes) container.innerHTML = container.innerHTML.replaceAll('${' + attrib.name + '}', attrib.value)
+        for (const attrib of element.attributes) container.innerHTML = container.innerHTML.replace(new RegExp(`\\$\\{${attrib.name}\\}`, 'gi'), attrib.value)
         const componentBeautifyOptions = { ...beautifyOptions }
         componentBeautifyOptions.preserve_newlines = false // remove newlines from components in case any style, script, or slot elements have been removed
         container.innerHTML = beautify(container.innerHTML, componentBeautifyOptions)
