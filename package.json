@@ -8,7 +8,7 @@
       "url": "https://github.com/rooseveltframework/progressively-enhance-web-components/graphs/contributors"
     }
   ],
-  "version": "1.0.1",
+  "version": "1.0.2",
   "homepage": "https://github.com/rooseveltframework/progressively-enhance-web-components",
   "license": "CC-BY-4.0",
   "main": "progressively-enhance-web-components.js",
@@ -16,7 +16,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "js-beautify": "1.15.3",
+    "js-beautify": "1.15.4",
     "jsdom": "26.0.0"
   },
   "devDependencies": {

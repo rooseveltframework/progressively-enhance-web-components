@@ -27,6 +27,14 @@ function isBinaryFile (filePath, bytesToCheck = 512) {
   return false
 }
 
+// hack to get jsdom to shut up about invalid css
+const originalConsoleError = console.error
+console.error = (...args) => {
+  if (args?.[0]?.type !== 'css parsing') {
+    originalConsoleError(...args)
+  }
+}
+
 module.exports = (params) => {
   const beautifyOptions = params?.beautifyOptions || {
     indent_size: 2
@@ -47,50 +55,52 @@ module.exports = (params) => {
     }
   }
 
-  // replace web components in all template files with a progressive enhancement-friendly version of the element
+  // find all invocations of each of the custom elements that are in allTemplateElements
+  const allFiles = {}
   const editedFiles = {}
-  for (const templateFile of templateFiles) {
-    const templateCode = fs.readFileSync(templateFile, 'utf8')
-    if (!isBinaryFile(templateFile)) {
-      let dom
-      let document
-      let partial = false
-      if (templateCode.trimStart().startsWith('<!DOCTYPE') || templateCode.trimStart().startsWith('<!doctype')) {
-        dom = new JSDOM(templateCode)
-        document = dom.window.document
-      } else {
-        dom = new JSDOM('<!DOCTYPE html><html><body></body></html>')
-        document = dom.window.document
-        const fragment = JSDOM.fragment(templateCode)
-        document.body.appendChild(fragment)
-        partial = true
-      }
-      const customElements = Array.from(document.querySelectorAll('*')).filter(element => element.tagName.includes('-')) // if there is a hyphen in the element name, it is a custom element
-      for (const element of customElements) {
-        if (!allTemplateElements[element.tagName.toLowerCase()]) continue // no <template> element found for this custom element, so do not convert it into a progressive enhancement-friendly version of the element
+  for (const customElement in allTemplateElements) { // loop through list of known custom elements
+    for (const templateFile of templateFiles) { // loop through all template files to search for invocations of this custom element
+      const templateCode = fs.readFileSync(templateFile, 'utf8')
+      if (!allFiles[templateFile]) allFiles[templateFile] = templateCode
+      if (!isBinaryFile(templateFile)) {
+        // replace all invocations of this custom element with the progressive enhancement-friendly version
+        const newTemplateCode = templateCode.replace(new RegExp(`<${customElement}\\b[^>]*>(.*?)<\\/${customElement}>`, 'gs'), (match, content) => {
+          // make a dom just for modifying this element
+          const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>')
+          const document = dom.window.document
+          const fragment = JSDOM.fragment(match)
+          document.body.appendChild(fragment)
 
-        // clone the <template> markup so we can construct a more verbose, progressive enhancement-compatible version of the web component
-        const template = allTemplateElements[element.tagName.toLowerCase()].content.cloneNode(true)
+          // the element we're modifying
+          const element = document.body.firstChild
 
-        // remove elements that are not needed in the progressive enhancement context from the <template> markup
-        template.querySelectorAll('style, script, slot').forEach(el => el.remove())
+          // clone the <template> markup so we can construct a more verbose, progressive enhancement-compatible version of the web component
+          const template = allTemplateElements[customElement].content.cloneNode(true)
 
-        // replace template literals with attribute values in the <template> markup
-        const container = document.createElement('div')
-        container.appendChild(template)
-        for (const attrib of element.attributes) container.innerHTML = container.innerHTML.replace(new RegExp(`\\$\\{${attrib.name}\\}`, 'gi'), attrib.value)
-        const componentBeautifyOptions = { ...beautifyOptions }
-        componentBeautifyOptions.preserve_newlines = false // remove newlines from components in case any style, script, or slot elements have been removed
-        container.innerHTML = beautify(container.innerHTML, componentBeautifyOptions)
+          // remove elements that are not needed in the progressive enhancement context from the <template> markup
+          template.querySelectorAll('style, script, slot').forEach(el => el.remove())
 
-        // move any component child elements with slot attributs to the root of the component's light dom because such elements always need to be at the root to be accepted by the web component JS
-        element.querySelectorAll('[slot]').forEach(slot => container.appendChild(slot.cloneNode(true)))
+          // replace template literals with attribute values in the <template> markup
+          const container = document.createElement('div')
+          container.appendChild(template)
+          for (const attrib of element.attributes) container.innerHTML = container.innerHTML.replace(new RegExp(`\\$\\{${attrib.name}\\}`, 'gi'), attrib.value)
+          const componentBeautifyOptions = { ...beautifyOptions }
+          componentBeautifyOptions.preserve_newlines = false // remove newlines from components in case any style, script, or slot elements have been removed
+          container.innerHTML = beautify(container.innerHTML, componentBeautifyOptions)
 
-        // replace the original custom element with the new progressive enhancement-friendly version of the element
-        element.innerHTML = params?.disableBeautify ? container.innerHTML : beautify(container.innerHTML, beautifyOptions)
-        let newFile = partial ? document.body.innerHTML : dom.serialize()
-        newFile = params?.disableBeautify ? newFile : beautify(newFile, beautifyOptions)
-        editedFiles[templateFile] = newFile
+          // move any component child elements with slot attributs to the root of the component's light dom because such elements always need to be at the root to be accepted by the web component JS
+          element.querySelectorAll('[slot]').forEach(slot => container.appendChild(slot.cloneNode(true)))
+
+          // replace the original custom element with the new progressive enhancement-friendly version of the element
+          element.innerHTML = params?.disableBeautify ? container.innerHTML : beautify(container.innerHTML, beautifyOptions)
+          let newCode = document.body.innerHTML
+          newCode = params?.disableBeautify ? newCode : beautify(newCode, beautifyOptions)
+          return newCode
+        })
+        if (templateCode !== newTemplateCode) {
+          allFiles[templateFile] = newTemplateCode
+          editedFiles[templateFile] = newTemplateCode
+        }
       }
     }
   }

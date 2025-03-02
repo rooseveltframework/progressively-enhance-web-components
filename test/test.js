@@ -29,11 +29,11 @@ describe('progressively-enhance-web-components tests', function () {
     const filePath = path.join(sampleAppDir, 'mvc', '.preprocessed_views', 'pageWithForm.html')
     const fileContent = fs.readFileSync(filePath, 'utf8')
     assert(fileContent.includes(`<word-count text="Once upon a time... " elid="story">
-            <div>
-              <textarea rows="10" cols="50" name="story" id="story">Once upon a time... </textarea>
-              <span class="word-count"></span>
-            </div>
-            <p slot="description">Type your story in the box above!</p>
-          </word-count>`), 'Expected markup not found')
+  <div>
+    <textarea rows="10" cols="50" name="story" id="story">Once upon a time... </textarea>
+    <span class="word-count"></span>
+  </div>
+  <p slot="description">Type your story in the box above!</p>
+</word-count>`), 'Expected markup not found')
   })
 })
