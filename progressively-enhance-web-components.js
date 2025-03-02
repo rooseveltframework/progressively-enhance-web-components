@@ -29,9 +29,10 @@ function isBinaryFile (filePath, bytesToCheck = 512) {
 
 // hack to get jsdom to shut up about invalid css
 const originalConsoleError = console.error
-console.error = (...args) => {
-  if (args?.[0]?.type !== 'css parsing') {
-    originalConsoleError(...args)
+const jsDomCssError = 'Error: Could not parse CSS stylesheet'
+console.error = (...params) => {
+  if (!params.find(p => p.toString().includes(jsDomCssError))) {
+    originalConsoleError(...params)
   }
 }
 
