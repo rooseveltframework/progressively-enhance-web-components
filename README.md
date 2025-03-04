@@ -7,7 +7,7 @@ A template file preprocessor for [progressively enhancing](https://en.wikipedia.
 
 It works by reading a directory of HTML templates for your web application, identifying any web components, and replacing custom element invocations with fallback markup that will work if JavaScript is disabled which will then be progressively enhanced into the desired web component when the JavaScript loads.
 
-This allows you to use web components in server-side templating the same way you would with client-side templating without creating a hard dependency on JavaScript for server-side template renders and without having to write two different templates for each context.
+This allows you to use web components in server-side templating the same way you would with client-side templating without creating a hard dependency on JavaScript for rendering templates with web components and without having to write two different templates for each context.
 
 This module was built and is maintained by the [Roosevelt web framework](https://github.com/rooseveltframework/roosevelt) [team](https://github.com/orgs/rooseveltframework/people), but it can be used independently of Roosevelt as well.
 
@@ -33,7 +33,7 @@ Suppose the intended use of the `<word-count>` component looks like this:
 
 And suppose also that you have an Express application with templates loaded into `mvc/views`.
 
-So to leverage this module's progressive enhancement technique, you will need to define this component using a `<template>` element in any one of your templates as follows:
+To leverage this module's progressive enhancement technique, you will need to define this component using a `<template>` element in any one of your templates as follows:
 
 ```html
 <template id="word-count">
@@ -97,7 +97,7 @@ app.listen(port, () => {
 })
 ```
 
-*Note: The above example uses the [Teddy](https://github.com/rooseveltframework/teddy) templating system, but you can use any templating system you like, so long as your templates can survive being preprocessed by [jsdom](https://github.com/jsdom/jsdom), which is a core part of how this module does its progressive enhancement work.*
+*Note: The above example uses the [Teddy](https://github.com/rooseveltframework/teddy) templating system, but you can use any templating system you like.*
 
 In the above sample Express application, the `mvc/views` folder is copied to `mvc/.preprocessed_views`, then any template files in there will be updated to replace any uses of `<word-count>` with a more progressive enhancement-friendly version of `<word-count>` instead.
 
