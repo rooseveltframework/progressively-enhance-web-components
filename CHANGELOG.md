@@ -4,6 +4,11 @@
 
 - Put your changes here...
 
+## 1.0.4
+
+- Fixed a bug that would cause the module to crash if the file list provided by the user wasn't a directory.
+- Updated various dependencies.
+
 ## 1.0.3
 
 - Fixed another bug that caused errors to print to the console if inline CSS existed in a scanned template.
