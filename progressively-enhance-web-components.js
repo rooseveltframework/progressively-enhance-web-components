@@ -5,7 +5,12 @@ const beautify = require('js-beautify').html
 
 function loopThroughFilesSync (dir) {
   let fileList = []
-  const files = fs.readdirSync(dir, { withFileTypes: true })
+  let files
+  try {
+    files = fs.readdirSync(dir, { withFileTypes: true })
+  } catch (err) {
+    return fileList
+  }
   files.forEach(file => {
     const filePath = path.join(dir, file.name)
     if (file.isDirectory()) fileList = fileList.concat(loopThroughFilesSync(filePath)) // recurse dirs
