@@ -1,9 +1,3 @@
-# Changelog
-
-## Next version
-
-- Put your changes here...
-
 ## 1.0.4
 
 - Fixed a bug that would cause the module to crash if the file list provided by the user wasn't a directory.
