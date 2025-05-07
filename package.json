@@ -9,7 +9,7 @@
     }
   ],
   "version": "1.0.4",
-  "homepage": "https://github.com/rooseveltframework/progressively-enhance-web-components",
+  "homepage": "https://rooseveltframework.org/docs/progressively-enhance-web-components/latest",
   "license": "CC-BY-4.0",
   "main": "progressively-enhance-web-components.js",
   "engines": {
