@@ -1,4 +1,4 @@
-[![npm](https://img.shields.io/npm/v/progressively-enhance-web-components.svg)](https://www.npmjs.com/package/progressively-enhance-web-components)
+🕸️ **progressively-enhance-web-components** [![npm](https://img.shields.io/npm/v/progressively-enhance-web-components.svg)](https://www.npmjs.com/package/progressively-enhance-web-components)
 
 A template file preprocessor for [progressively enhancing](https://en.wikipedia.org/wiki/Progressive_enhancement) web components in Node.js.
 
