@@ -13,7 +13,7 @@
   "license": "CC-BY-4.0",
   "main": "progressively-enhance-web-components.js",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "js-beautify": "1.15.4",
