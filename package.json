@@ -8,10 +8,16 @@
       "url": "https://github.com/rooseveltframework/progressively-enhance-web-components/graphs/contributors"
     }
   ],
-  "version": "2.0.0",
+  "version": "2.0.1",
   "homepage": "https://rooseveltframework.org/docs/progressively-enhance-web-components/latest",
   "license": "CC-BY-4.0",
   "main": "progressively-enhance-web-components.js",
+  "files": [
+    "progressively-enhance-web-components.js",
+    "CHANGELOG.md",
+    "CONFIGURATION.md",
+    "USAGE.md"
+  ],
   "engines": {
     "node": ">=22.0.0"
   },
