@@ -1,3 +1,7 @@
+## 2.0.1
+
+- Altered the npm package to not include unnecessary files.
+
 ## 2.0.0
 
 - Breaking: A component is now written into a declarative shadow root, with a copy of its markup kept beside that as fallback content, rather than into the light DOM alone. This keeps the `<style>`, `<script>` and `<slot>` elements a fallback cannot use, styles the component and makes its slots work before any JavaScript runs, and leaves nothing to be swapped once the component upgrades, while a browser that does not build shadow roots still renders the fallback as it always did.
