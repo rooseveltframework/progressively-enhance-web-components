@@ -1,25 +1,31 @@
 const fs = require('fs-extra')
+const path = require('path')
+
+const viewsDir = path.join('mvc', 'views')
+const preprocessedViewsDir = path.join('mvc', '.preprocessed_views')
 
 // load progressively-enhance-web-components.js
 const editedFiles = require('../../progressively-enhance-web-components')({
-  templatesDir: './mvc/views'
+  templatesDir: viewsDir
 })
 
 // copy unmodified templates to a modified templates directory
-fs.copySync('mvc/views', 'mvc/.preprocessed_views')
+fs.copySync(viewsDir, preprocessedViewsDir)
 
 // update the relevant templates
+//
+// the keys are file paths built with path.join, so they are written with whatever separator the platform uses. rebuilding each destination from the path relative to the templates directory is what keeps that working on windows, where a string replace of 'mvc/views' matches nothing in 'mvc\views\pageWithForm.html' and every template is left unenhanced
 for (const file in editedFiles) {
-  fs.writeFileSync(file.replace('mvc/views', 'mvc/.preprocessed_views'), editedFiles[file])
+  fs.writeFileSync(path.join(preprocessedViewsDir, path.relative(viewsDir, file)), editedFiles[file])
 }
 
 // configure express
-const path = require('path')
 const express = require('express')
 const app = express()
-app.use(require('body-parser').urlencoded({ extended: true })) // populates req.body on requests
+app.use(express.urlencoded({ extended: true })) // populates req.body on requests
+
 app.engine('html', require('teddy').__express) // set teddy as view engine that will load html files
-app.set('views', 'mvc/.preprocessed_views') // set template dir
+app.set('views', preprocessedViewsDir) // set template dir
 app.set('view engine', 'html') // set teddy as default view engine
 if (!fs.existsSync('public')) fs.mkdirSync('public') // make the public folder if it does not exist
 app.use(express.static('public')) // make public folder serve static files
