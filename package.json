@@ -1,6 +1,6 @@
 {
   "name": "progressively-enhance-web-components",
-  "description": "🕸️ Template file preprocessor for progressively enhancing web components.",
+  "description": "\ud83d\udd78\ufe0f Template file preprocessor for progressively enhancing web components.",
   "author": "Roosevelt Framework Team <rooseveltframework@gmail.com>",
   "contributors": [
     {
@@ -8,36 +8,36 @@
       "url": "https://github.com/rooseveltframework/progressively-enhance-web-components/graphs/contributors"
     }
   ],
-  "version": "1.0.4",
+  "version": "2.0.0",
   "homepage": "https://rooseveltframework.org/docs/progressively-enhance-web-components/latest",
   "license": "CC-BY-4.0",
   "main": "progressively-enhance-web-components.js",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "dependencies": {
-    "js-beautify": "1.15.4",
-    "jsdom": "28.1.0"
+    "js-beautify": "2.0.3",
+    "jsdom": "30.1.0"
   },
   "devDependencies": {
-    "c8": "11.0.0",
-    "mocha": "11.7.6",
+    "@playwright/test": "^1.63.0",
     "standard": "17.1.2"
-  },
-  "mocha": {
-    "timeout": "700000ms"
   },
   "standard": {
     "ignore": [
       "dist/",
-      "sampleApps/express/public"
+      "playwright-report/",
+      "sampleApps/express/public",
+      "test-results/"
     ]
   },
   "scripts": {
     "lint": "standard",
     "lint-fix": "standard --fix",
-    "test": "mocha test/*.js",
-    "coverage": "c8 --reporter=text --reporter=lcov mocha test/*.js --test",
+    "test": "npm run test-node && npm run test-browser",
+    "test-node": "node --test test/test.js",
+    "test-browser": "playwright test",
+    "coverage": "node --test --experimental-test-coverage test/test.js",
     "express-sample": "node -e \"process.chdir('sampleApps/express'); require('./sampleApps/express/server.js')\"",
     "sample": "npm run express-sample"
   },

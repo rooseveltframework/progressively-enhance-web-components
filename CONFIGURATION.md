@@ -13,3 +13,4 @@ The full list of params available is:
 - `templatesDir` *[String]*: What folder to examine. This is required.
 - `disableBeautify` *[Boolean]*: If set to true, this module will not beautify the HTML in the outputted markup. Default: `false`.
 - `beautifyOptions` *[Object]*: Options to pass to [js-beautify](https://github.com/beautifier/js-beautify). Default: `{ indent_size: 2 }`.
+- `mode` *[String]*: How to enhance an invocation whose definition does not ask for a mode of its own. One of `both`, `shadow`, or `light`. Default: `'both'`. See usage section for details.

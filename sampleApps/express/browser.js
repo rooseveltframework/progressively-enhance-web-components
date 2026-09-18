@@ -1,13 +1,20 @@
 class WordCount extends window.HTMLElement {
   connectedCallback () { // called whenever a new instance of this element is inserted into the dom
-    this.shadow = this.attachShadow({ mode: 'open' }) // create and attach a shadow dom to the custom element
-    this.shadow.appendChild(document.getElementById('word-count').content.cloneNode(true)) // create the elements in the shadow dom from the template element
+    // this.shadowRoot will exist already, except in light mode or for an element created in javascript
+    this.shadow = this.shadowRoot || this.attachShadow({ mode: 'open' })
 
-    // set textarea attributes
+    // add the markup of the component if it is not already populated
+    if (!this.shadow.childElementCount) {
+      const markup = document.createElement('div')
+      markup.appendChild(document.getElementById('word-count').content.cloneNode(true))
+
+      // fill in its ${templateLiterals} from this element's attributes
+      for (const attrib of this.attributes) markup.innerHTML = markup.innerHTML.replace(new RegExp(`\\$\\{${attrib.name}\\}`, 'gi'), attrib.value)
+
+      this.shadow.append(...markup.childNodes)
+    }
+
     const textarea = this.shadow.querySelector('textarea')
-    textarea.value = this.getAttribute('text') || ''
-    textarea.id = this.getAttribute('id') || ''
-    textarea.name = this.getAttribute('id') || ''
 
     // function for updating the word count
     const updateWordCount = () => {

@@ -173,3 +173,7 @@ temp/
 .npm-cache
 .preprocessed_views
 public
+
+# playwright output
+test-results
+playwright-report

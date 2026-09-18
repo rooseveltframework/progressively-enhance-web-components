@@ -2,7 +2,7 @@
 
 ## Before opening a pull request
 
-- Be sure all tests pass: `npm t`.
+- Be sure all tests pass: `npm t`. That runs the node tests and then drives the express sample app in a real browser, which needs the sample app's own dependencies (`cd sampleApps/express && npm ci`) and a browser (`npx playwright install chromium`).
 - Ensure good test coverage and write new tests if necessary: `npm run coverage`.
 - Add your changes to `CHANGELOG.md`.
 
