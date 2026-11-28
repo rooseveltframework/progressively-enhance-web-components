@@ -16,7 +16,6 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
       - run: npm run lint
-      - run: npm run test-node
       - run: npm run coverage
       # the browser tests drive the express sample app, which brings its own dependencies and needs a browser to be driven in
       - run: npm ci

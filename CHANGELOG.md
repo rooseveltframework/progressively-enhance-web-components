@@ -1,3 +1,26 @@
+## 2.1.0
+
+- Breaking: Changed attribute values to be escaped when they are written into a component's markup. Previously a value was pasted into the markup as it was, so one holding a quote or an angle bracket broke the attribute or element it landed in, and an entity such as `&lt;b&gt;` came out as a real `<b>` element. Pass markup as slotted children rather than through an attribute.
+  - Related: Fixed a value holding `$&`, `$1` or similar being expanded as a replacement pattern, and an attribute name holding a character such as `.` filling in other template literals as well as its own (`${a.b}` matched `${axb}`). The browser example in USAGE.md and the sample app had the same problems and have been fixed the same way.
+- Breaking: Changed component definitions to only be recognized on a `<template>` whose `id` is a valid custom element name. Previously a `<template id="header">` used for something else caused every `<header>` element to be "enhanced" with its contents.
+- Changed jsdom's CSS parsing complaints to be silenced through a jsdom virtual console rather than by temporarily replacing `console.error`, which could also throw when something logged `null` or `undefined`.
+- Changed files to be read in alphabetical order on every platform. When the same template `id` is defined more than once, which one is used no longer depends on the filesystem, and a warning is now logged.
+- Changed hidden directories, such as `.git`, to be skipped like hidden files. Symbolic links are now followed, with protection against loops.
+- Changed the module to throw a clear error when `templatesDir` is not given, rather than throwing an unhelpful `TypeError` when called with no params at all, or silently doing nothing when called without it.
+- Fixed every file holding a non-ASCII character, such as an accented letter, a curly quote or an emoji, being treated as binary and silently skipped. A file is now treated as binary only when it has a null byte near its start or is not valid UTF-8.
+- Fixed invocations inside HTML comments, inside `<script>`, `<style>`, `<textarea>` and `<title>` elements, and inside plain `<template>` elements being enhanced. Expanding one inside a `<script>` string broke the script.
+- Fixed a component whose template invokes another component only having the inner one enhanced when it happened to be defined first. Nested components are now always enhanced. A component that invokes itself, directly or through another, is expanded one level and then left for its JavaScript to render, with a warning, rather than expanding forever.
+- Fixed an invocation nested inside another of the same kind never being enhanced in `shadow` and `both` modes, the search for invocations stepping over everything the outer one held.
+- Fixed one invocation that is never closed stopping every invocation after it in the same file from being enhanced.
+- Fixed an element whose name only begins the same way as the one being enhanced, such as `</my-thing-two>` inside `<my-thing>`, being taken as its closing tag.
+- Fixed a self-closing invocation nested inside another of the same kind leaving the outer one unclosed.
+- Fixed an apostrophe in an unquoted attribute, such as `<my-thing don't>`, being read as the start of a quoted value.
+- Fixed a character that becomes longer when lowercased, such as `İ`, shifting every position after it and corrupting the output.
+- Fixed `light` mode moving a slotted child that belongs to a nested custom element, or that sits inside another slotted child, to the top level of the component.
+- Fixed the `data-enhanced=""` cleanup also rewriting matching text anywhere inside the enhanced element, not just on the element itself.
+- Improved performance: each file is now scanned once for all components rather than once per component, one jsdom document is reused for every invocation, and a file is parsed as a document only if it contains a `<template>`.
+- Updated dependencies.
+
 ## 2.0.1
 
 - Altered the npm package to not include unnecessary files.

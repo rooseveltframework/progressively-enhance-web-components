@@ -214,7 +214,29 @@ Apply a `data-enhanced` attribute:
 
 Alternatively, if a `<template shadowrootmode>` exists in your custom element invocation, that will also cause this library to ignore it.
 
-This library will also apply the `data-enhanced` attribute to any custom element it enhances to prevent re-enhancing on a second pass. 
+This library will also apply the `data-enhanced` attribute to any custom element it enhances to prevent re-enhancing on a second pass.
+
+The element itself is left exactly as written, but other invocations nested inside it that are not marked are still enhanced.
+
+An invocation is also left alone wherever a browser would not render it as an element: inside an HTML comment, inside a `<script>`, `<style>`, `<textarea>` or `<title>`, and inside a plain `<template>` (including the `<template>` that defines a component, which your component's JavaScript clones as it was written). An invocation inside a `<template shadowrootmode>` is rendered by the browser, so it is enhanced.
+
+### What counts as a component definition
+
+Only a `<template>` whose `id` is a valid custom element name is treated as a component: it must start with a lowercase letter, contain a hyphen, and contain no uppercase letters, the same rules `customElements.define` enforces. So `<template id="word-count">` defines `<word-count>`, while a `<template id="header">` or `<template id="row">` used for some other purpose is ignored rather than being applied to every `<header>` or `<row>`.
+
+If the same `id` is defined in more than one file, the one in the file that comes last alphabetically by path is used, and a warning is logged.
+
+A component's template can invoke other components, and each of those is enhanced as part of it. A component that invokes itself, directly or through another component, would expand forever, so the inner invocation is left for the component's JavaScript to render (and marked `data-enhanced`), and a warning is logged.
+
+### Attribute values are escaped
+
+The value of an attribute is written into the component's markup as text, so `label="Tom &amp; Jerry"` or `label="say &quot;hi&quot;"` comes out as that text rather than as broken markup. If you need markup inside a component, pass it as slotted child content instead of through an attribute.
+
+Values are not escaped for CSS or JavaScript, so avoid putting a `${templateLiteral}` inside a `<style>` or `<script>` element unless you control the attribute's value.
+
+### Template language syntax inside an invocation's opening tag
+
+Each invocation is read by an HTML parser, so template language syntax written *between the attributes* of an invocation's opening tag will not survive. For example, `<word-count {if hidden}hidden{/if}>` is read as attributes named `{if`, `hidden}hidden{` and `if}`. Template syntax inside an attribute value (`text="{story}"`) or in the element's children is fine. If you need a conditional attribute, put the condition around the whole element instead.
 
 ### Writing the frontend JavaScript
 
@@ -230,13 +252,20 @@ class WordCount extends window.HTMLElement {
 
     // add the markup of the component if it is not already populated
     if (!this.shadow.childElementCount) {
-      const markup = document.createElement('div')
-      markup.appendChild(document.getElementById('word-count').content.cloneNode(true))
+      const markup = document.getElementById('word-count').content.cloneNode(true)
 
       // fill in its ${templateLiterals} from this element's attributes
-      for (const attrib of this.attributes) markup.innerHTML = markup.innerHTML.replace(new RegExp(`\\$\\{${attrib.name}\\}`, 'gi'), attrib.value)
+      //
+      // the text and attribute values are set directly rather than by editing markup, so that a value holding a quote or an angle bracket is written as text instead of being parsed as html
+      const fill = text => text.replace(/\$\{([^}]+)\}/g, (literal, name) => this.getAttribute(name) ?? literal)
+      const walker = document.createTreeWalker(markup, window.NodeFilter.SHOW_ELEMENT | window.NodeFilter.SHOW_TEXT)
+      while (walker.nextNode()) {
+        const node = walker.currentNode
+        if (node.nodeType === window.Node.TEXT_NODE) node.data = fill(node.data)
+        else for (const attrib of node.attributes) attrib.value = fill(attrib.value)
+      }
 
-      this.shadow.append(...markup.childNodes)
+      this.shadow.append(markup)
     }
 
     const textarea = this.shadow.querySelector('textarea')

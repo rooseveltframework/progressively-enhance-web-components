@@ -7,6 +7,7 @@ const assert = require('node:assert')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
+const { JSDOM } = require('jsdom')
 const pewc = require('../progressively-enhance-web-components')
 
 // a templates directory holding the files a test describes, thrown away afterwards
@@ -363,6 +364,15 @@ describe('files it should not read as templates', () => {
 })
 
 describe('leaving the host application alone', () => {
+  it('should not print jsdom complaints about css it cannot parse', t => {
+    const error = t.mock.method(console, 'error', () => {})
+    preprocess({
+      'layout.html': '<style>p{color:@@@}</style><template id="my-thing"><style>p{color:@@@}</style><p>${label}</p></template>',
+      'page.html': '<style>q{color:@@@}</style><my-thing label="hi"></my-thing>'
+    })
+    assert.strictEqual(error.mock.callCount(), 0, JSON.stringify(error.mock.calls.map(c => c.arguments)))
+  })
+
   // jsdom complains about css it cannot parse, and the preprocessor silences that. it should not silence it for good, or for anybody else: an application logging an error of its own after calling the preprocessor should still see it
   //
   // the module is loaded again from inside the test rather than used from the top of this file, because whatever it does to console.error it does when it is loaded: a collector installed afterwards would sit underneath it and the test could not fail
@@ -405,6 +415,246 @@ describe('leaving the host application alone', () => {
       console.error = original
     }
     assert.ok(seen.includes('something else went wrong'), 'an unrelated error was silenced too')
+  })
+})
+
+// the cases below each broke something before they were tested for, and are kept so that none of them comes back
+describe('reading files', () => {
+  it('should read a template holding characters outside ascii, rather than taking it for a binary file', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '<p>Café “quoted” 🎧</p><my-thing label="hi"></my-thing>' })
+    assert.ok(out['page.html'], 'a file holding non-ascii text was skipped')
+    assert.ok(out['page.html'].includes('Café “quoted” 🎧'), 'the non-ascii text did not survive')
+  })
+
+  it('should skip a file that is not valid utf-8', () => {
+    const dir = templatesDir({ 'def.html': definition })
+    fs.writeFileSync(path.join(dir, 'latin1.html'), Buffer.concat([Buffer.from('<p>caf'), Buffer.from([0xe9]), Buffer.from('</p><my-thing label="hi"></my-thing>')]))
+    assert.deepStrictEqual(pewc({ templatesDir: dir }), {})
+  })
+
+  it('should keep a byte order mark at the start of a file', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '﻿<my-thing label="hi"></my-thing>' })
+    assert.ok(out['page.html'].startsWith('﻿'))
+  })
+
+  it('should skip a hidden directory', () => {
+    const out = preprocess({ 'def.html': definition, '.cache/page.html': '<my-thing label="hi"></my-thing>' })
+    assert.deepStrictEqual(out, {})
+  })
+
+  it('should follow a symbolic link, and not loop forever on one pointing back up the tree', t => {
+    const dir = templatesDir({ 'def.html': definition })
+    const elsewhere = templatesDir({ 'page.html': '<my-thing label="hi"></my-thing>' })
+    try {
+      fs.symlinkSync(elsewhere, path.join(dir, 'linked'), 'dir')
+      fs.symlinkSync(dir, path.join(dir, 'loop'), 'dir')
+    } catch {
+      return t.skip('symbolic links cannot be made here') // windows without the privilege to make them
+    }
+    const edited = pewc({ templatesDir: dir })
+    assert.deepStrictEqual(Object.keys(edited).map(f => path.relative(dir, f)), [path.join('linked', 'page.html')])
+  })
+
+  it('should throw a clear error when no templates directory is given', () => {
+    assert.throws(() => pewc(), /templatesDir param is required/)
+    assert.throws(() => pewc({}), /templatesDir param is required/)
+  })
+})
+
+describe('what counts as a component definition', () => {
+  it('should ignore a template whose id is not a custom element name', () => {
+    const out = preprocess({ 'def.html': '<template id="header"><nav>menu</nav></template>', 'page.html': '<header><h1>Site</h1></header>' })
+    assert.deepStrictEqual(out, {})
+  })
+
+  it('should ignore a template whose id holds upper case letters, which customElements.define would refuse', () => {
+    const out = preprocess({ 'def.html': '<template id="My-Thing"><p>x</p></template>', 'page.html': '<my-thing></my-thing>' })
+    assert.deepStrictEqual(out, {})
+  })
+
+  it('should ignore a template whose id is one of the hyphenated names svg and mathml already use', () => {
+    const out = preprocess({ 'def.html': '<template id="font-face"><p>x</p></template>', 'page.html': '<font-face></font-face>' })
+    assert.deepStrictEqual(out, {})
+  })
+
+  it('should warn when an id is defined twice, and use the one in the file that comes last', t => {
+    const warn = t.mock.method(console, 'warn', () => {})
+    const out = preprocess({
+      'a.html': '<template id="my-thing"><p>from a</p></template>',
+      'b.html': '<template id="my-thing"><p>from b</p></template>',
+      'page.html': '<my-thing></my-thing>'
+    })
+    assert.ok(out['page.html'].includes('from b'))
+    assert.strictEqual(warn.mock.callCount(), 1)
+    assert.match(warn.mock.calls[0].arguments[0], /my-thing.*more than once/)
+  })
+})
+
+describe('putting attribute values into the markup', () => {
+  it('should escape a value holding quotes and angle brackets, in text and in attributes alike', () => {
+    const out = preprocess({
+      'def.html': '<template id="my-thing"><p title="${label}">${label}</p></template>',
+      'page.html': '<my-thing label="say &quot;hi&quot; &lt;b&gt;bold&lt;/b&gt;"></my-thing>'
+    }, { mode: 'light', disableBeautify: true })
+    // read back by parsing rather than by comparing text, since whether a serializer escapes < and > inside an attribute value differs between versions of the html spec, and either way is correct
+    const { document } = new JSDOM(out['page.html']).window
+    const p = document.querySelector('my-thing p')
+    assert.ok(p, out['page.html'])
+    assert.strictEqual(p.getAttribute('title'), 'say "hi" <b>bold</b>', 'the attribute value was not written as text')
+    assert.strictEqual(p.textContent, 'say "hi" <b>bold</b>', 'the text was not written as text')
+    assert.strictEqual(document.querySelector('my-thing b'), null, 'the value was parsed as markup')
+  })
+
+  it('should not expand a value holding a replacement pattern such as $&', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '<my-thing label="cost $&amp; $1 more"></my-thing>' }, { mode: 'light', disableBeautify: true })
+    assert.ok(out['page.html'].includes('<p>cost $&amp; $1 more</p>'), out['page.html'])
+  })
+
+  it('should match an attribute whose name holds a character that means something in a regular expression only to its own literal', () => {
+    const out = preprocess({
+      'def.html': '<template id="my-thing"><p>${a.b}|${axb}</p></template>',
+      'page.html': '<my-thing a.b="dot" axb="cross"></my-thing>'
+    }, { mode: 'light', disableBeautify: true })
+    assert.ok(out['page.html'].includes('<p>dot|cross</p>'), out['page.html'])
+  })
+
+  it('should not fill in a literal written inside another attribute value', () => {
+    const out = preprocess({
+      'def.html': '<template id="my-thing"><p>${first}</p></template>',
+      'page.html': '<my-thing first="${second}" second="oops"></my-thing>'
+    }, { mode: 'light', disableBeautify: true })
+    assert.ok(out['page.html'].includes('<p>${second}</p>'), out['page.html'])
+  })
+})
+
+describe('where an invocation is not one', () => {
+  const page = inner => preprocess({ 'def.html': definition, 'page.html': inner })['page.html']
+
+  it('should leave an invocation inside a comment alone', () => {
+    assert.strictEqual(page('<!-- <my-thing label="a"></my-thing> -->'), undefined)
+  })
+
+  for (const element of ['script', 'style', 'textarea', 'title']) {
+    it(`should leave an invocation inside a <${element}> alone`, () => {
+      assert.strictEqual(page(`<${element}>x = "<my-thing label=1></my-thing>"</${element}>`), undefined)
+    })
+  }
+
+  it('should leave an invocation inside a plain template alone, such as one in the definition of another component', () => {
+    const out = preprocess({ 'def.html': definition, 'other.html': '<template id="other-thing"><my-thing label="a"></my-thing></template>' })
+    assert.deepStrictEqual(out, {})
+  })
+
+  it('should enhance an invocation inside a declarative shadow root, the browser rendering what is in one', () => {
+    const out = page('<div><template shadowrootmode="open"><my-thing label="a"></my-thing></template></div>')
+    assert.ok(out && squash(out).includes('<my-thing label="a" data-enhanced>'), out)
+  })
+
+  it('should still enhance an invocation after a comment or script that holds one', () => {
+    const out = page('<!-- <my-thing> --><script>"<my-thing>"</script><my-thing label="b"></my-thing>')
+    assert.ok(out.startsWith('<!-- <my-thing> --><script>"<my-thing>"</script>'), out)
+    assert.ok(squash(out).includes('<my-thing label="b" data-enhanced>'), out)
+  })
+})
+
+describe('components that invoke other components', () => {
+  // the definitions are put in files named so that each order is tried, the order they were read in being what this once depended on
+  for (const [outerFile, innerFile] of [['a.html', 'b.html'], ['b.html', 'a.html']]) {
+    it(`should enhance the inner component whichever is defined first (${outerFile} holding the outer one)`, () => {
+      const out = preprocess({
+        [outerFile]: '<template id="outer-thing"><inner-thing x="1"></inner-thing></template>',
+        [innerFile]: '<template id="inner-thing"><b>${x}</b></template>',
+        'page.html': '<outer-thing></outer-thing>'
+      }, { mode: 'light', disableBeautify: true })
+      assert.strictEqual(out['page.html'], '<outer-thing data-enhanced><inner-thing x="1" data-enhanced><b>1</b></inner-thing></outer-thing>')
+      assert.deepStrictEqual(Object.keys(out), ['page.html'], 'a definition file was rewritten')
+    })
+  }
+
+  it('should enhance an invocation nested in the light dom of another of the same kind', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '<my-thing label="outer"><my-thing label="inner"></my-thing></my-thing>' }, { mode: 'shadow', disableBeautify: true })
+    assert.ok(out['page.html'].includes('<my-thing label="inner" data-enhanced><template shadowrootmode="open"><div class="wrap"><p>inner</p></div></template></my-thing>'), out['page.html'])
+  })
+
+  it('should stop a component that invokes itself after one level, leaving the inner one for its javascript, rather than expanding it forever', t => {
+    const warn = t.mock.method(console, 'warn', () => {})
+    const out = preprocess({
+      'def.html': '<template id="my-thing"><p>${label}</p><my-thing label="inner"></my-thing></template>',
+      'page.html': '<my-thing label="outer"></my-thing>'
+    }, { mode: 'shadow', disableBeautify: true })
+    assert.strictEqual(out['page.html'], '<my-thing label="outer" data-enhanced><template shadowrootmode="open"><p>outer</p><my-thing data-enhanced label="inner"></my-thing></template></my-thing>')
+    assert.strictEqual(warn.mock.callCount(), 1)
+    assert.match(warn.mock.calls[0].arguments[0], /invokes itself \(my-thing > my-thing\)/)
+  })
+
+  it('should stop components that invoke each other in the same way', t => {
+    t.mock.method(console, 'warn', () => {})
+    const out = preprocess({
+      'def.html': '<template id="ping-thing"><pong-thing></pong-thing></template><template id="pong-thing"><ping-thing></ping-thing></template>',
+      'page.html': '<ping-thing></ping-thing>'
+    }, { mode: 'light', disableBeautify: true })
+    assert.strictEqual(out['page.html'], '<ping-thing data-enhanced><pong-thing data-enhanced><ping-thing data-enhanced></ping-thing></pong-thing></ping-thing>')
+  })
+
+  for (const mode of ['both', 'shadow', 'light']) {
+    it(`should change nothing when run again over what it wrote with nested components in ${mode} mode`, t => {
+      t.mock.method(console, 'warn', () => {})
+      const files = {
+        'def.html': '<template id="outer-thing"><div><inner-thing x="1"></inner-thing><outer-thing></outer-thing></div></template><template id="inner-thing"><b>${x}</b></template>',
+        'page.html': '<outer-thing><outer-thing></outer-thing><span slot="s"><inner-thing x="2"></inner-thing></span></outer-thing>'
+      }
+      const once = preprocess(files, { mode })
+      const twice = preprocess({ ...files, 'page.html': once['page.html'] }, { mode })
+      assert.deepStrictEqual(twice, {})
+    })
+  }
+})
+
+describe('finding where an invocation ends', () => {
+  it('should still enhance the invocations after one that is never closed', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '<my-thing label="a"><my-thing label="b"></my-thing>' }, { mode: 'light', disableBeautify: true })
+    assert.ok(out['page.html'].includes('<my-thing label="b" data-enhanced><div class="wrap"><p>b</p></div></my-thing>'), out['page.html'])
+  })
+
+  it('should not take the closing tag of an element whose name only begins the same way for its own', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '<my-thing label="a"><p slot="s"><my-thing-two></my-thing-two></p></my-thing><p>after</p>' }, { mode: 'light', disableBeautify: true })
+    assert.strictEqual(out['page.html'], '<my-thing label="a" data-enhanced><div class="wrap"><p>a</p></div><p slot="s"><my-thing-two></my-thing-two></p></my-thing><p>after</p>')
+  })
+
+  it('should not wait for a closing tag for a nested invocation that closes itself', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '<my-thing label="a"><my-thing label="b" /></my-thing><p>after</p>' }, { mode: 'shadow', disableBeautify: true })
+    assert.ok(out['page.html'].endsWith('</my-thing><p>after</p>'), out['page.html'])
+    assert.ok(out['page.html'].startsWith('<my-thing label="a" data-enhanced>'), out['page.html'])
+  })
+
+  it('should not take an apostrophe in an unquoted attribute for the start of a value', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': "<my-thing label=hi don't></my-thing>" }, { mode: 'light', disableBeautify: true })
+    assert.ok(out['page.html'].includes('<p>hi</p>'), out['page.html'])
+  })
+
+  it('should not be thrown off by a character that becomes longer when lower cased', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '<p>İstanbul İzmir</p><my-thing label="hi"></my-thing><p>after</p>' }, { mode: 'light', disableBeautify: true })
+    assert.strictEqual(out['page.html'], '<p>İstanbul İzmir</p><my-thing label="hi" data-enhanced><div class="wrap"><p>hi</p></div></my-thing><p>after</p>')
+  })
+})
+
+describe('slotted children in light mode', () => {
+  it('should leave a slotted child that belongs to a nested custom element where it is', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '<my-thing label="a"><other-thing><span slot="theirs">x</span></other-thing></my-thing>' }, { mode: 'light', disableBeautify: true })
+    assert.ok(!out['page.html'].includes('slot="theirs"'), out['page.html'])
+  })
+
+  it('should move a slotted child inside another slotted child only once, along with its parent', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '<my-thing label="a"><div slot="outer"><span slot="inner">x</span></div></my-thing>' }, { mode: 'light', disableBeautify: true })
+    assert.strictEqual((out['page.html'].match(/slot="inner"/g) || []).length, 1, out['page.html'])
+  })
+})
+
+describe('the data-enhanced attribute', () => {
+  it('should be written bare on the enhanced element without touching the same text inside it', () => {
+    const out = preprocess({ 'def.html': definition, 'page.html': '<my-thing label="a"><p data-enhanced="">kept</p></my-thing>' }, { mode: 'shadow', disableBeautify: true })
+    assert.ok(out['page.html'].startsWith('<my-thing label="a" data-enhanced>'), out['page.html'])
+    assert.ok(out['page.html'].includes('<p data-enhanced="">kept</p>'), out['page.html'])
   })
 })
 
